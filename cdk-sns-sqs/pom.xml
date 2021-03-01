@@ -55,6 +55,11 @@
             <artifactId>sqs</artifactId>
             <version>${cdk.version}</version>
         </dependency>
+        <dependency>
+            <groupId>software.amazon.awscdk</groupId>
+            <artifactId>iam</artifactId>
+            <version>${cdk.version}</version>
+        </dependency>
 
         <dependency>
           <groupId>org.junit.jupiter</groupId>
