@@ -32,7 +32,7 @@ public class CdkSnsSqsStack extends Stack {
             .create(this, "RsEventNotificationsPublishRole")
             .assumedBy(new AnyPrincipal())
             .build();
-        final CfnOutput snsPublishRoleOut = CfnOutput
+        CfnOutput
             .Builder
             .create(this, "RsEventNotificationsPublishRoleOut")
             .exportName("RsEventNotificationsPublishRole")
@@ -43,7 +43,7 @@ public class CdkSnsSqsStack extends Stack {
             .Builder
             .create(this, "RsEventNotificationPublishGroup")
             .build();
-        final CfnOutput snsPublishGroupOut = CfnOutput
+        CfnOutput
             .Builder
             .create(this, "RsEventNotificationPublishGroupOut")
             .exportName("RsEventNotificationPublishGroup")
@@ -56,14 +56,14 @@ public class CdkSnsSqsStack extends Stack {
             .fifo(true) // or false
             .displayName("RsEventNotifications")
             .build();
-        final CfnOutput topicArnOut = CfnOutput
+        CfnOutput
             .Builder
             .create(this, "RsEventNotificationsTopicArnOut")
             .exportName("RsEventNotificationsTopicArn")
             .description("ARN of RsEventNotifications Topic")
             .value(topic.getTopicArn())
             .build();
-        final CfnOutput topicNameOut = CfnOutput
+        CfnOutput
             .Builder
             .create(this, "RsEventNotificationsTopicNameOut")
             .exportName("RsEventNotificationsTopicName")
@@ -74,54 +74,43 @@ public class CdkSnsSqsStack extends Stack {
         topic.grantPublish(snsPublishRole);
         topic.grantPublish(snsPublisherGroup);
 
-        // SQS Consumer Mobile2_Client
-        final Role sqsConsumeRole_m2c = Role.Builder.create(this, "RsEventNotificationsConsumerRole_m2c").assumedBy(new AnyPrincipal()).build();
-        final Group sqsConsumerGroup_m2c = Group.Builder.create(this, "RsEventNotificationConsumerGroup_m2c").build();
+        String[] clients = {"Mobile2Clinet", "Mobile3Client", "Mobile4Client"};
 
-        final Queue queue_m2c = Queue.Builder.create(this, "RsEventNotifications_m2c")
-            .fifo(true) // or false
-            .visibilityTimeout(Duration.seconds(300))
-            .build();
+        this.createClients(topic, clients);
+    }
 
-        topic.addSubscription(new SqsSubscription(queue_m2c));
+    protected void createClients(Topic topic, String[] clients){
+        
+        for (String client: clients) {           
+            // Iterate over all clients
+            Role sqsConsumeRole = Role.Builder
+                .create(this, "RsEventNotificationsConsumerRole_"+client)
+                .assumedBy(new AnyPrincipal())
+                .build();
+            Group sqsConsumerGroup = Group.Builder
+                .create(this, "RsEventNotificationConsumerGroup_"+client)
+                .build();
+            
+            Queue queue = Queue.Builder.create(this, "RsEventNotifications_"+client)
+                .fifo(true) // or false
+                .visibilityTimeout(Duration.seconds(300))
+                .build();
+            
+            topic.addSubscription(new SqsSubscription(queue));
 
-        PolicyStatement sqsPolicyStatement_m2c = new PolicyStatement();
-        sqsPolicyStatement_m2c.setSid("Consume");
-        sqsPolicyStatement_m2c.setEffect(Effect.ALLOW);
-        sqsPolicyStatement_m2c.addActions("SQS:ReceiveMessage");
-        sqsPolicyStatement_m2c.addActions("SQS:DeleteMessage");
-        sqsPolicyStatement_m2c.addResources(queue_m2c.getQueueArn());
-        PolicyDocument sqsPolicyDocument_m2c = new PolicyDocument();
-        sqsPolicyDocument_m2c.addStatements(sqsPolicyStatement_m2c);
+            PolicyStatement sqsPolicyStatement = new PolicyStatement();
+            sqsPolicyStatement.setSid("Consume");
+            sqsPolicyStatement.setEffect(Effect.ALLOW);
+            sqsPolicyStatement.addActions("SQS:ReceiveMessage");
+            sqsPolicyStatement.addActions("SQS:DeleteMessage");
+            sqsPolicyStatement.addResources(queue.getQueueArn());
+            PolicyDocument sqsPolicyDocument = new PolicyDocument();
+            sqsPolicyDocument.addStatements(sqsPolicyStatement);
 
-        Policy sqsPolicy_m2c = Policy.Builder.create(this, "RsEventNotificationsConsumerPolicy_m2c").document(sqsPolicyDocument_m2c).build();
+            Policy sqsPolicy = Policy.Builder.create(this, "RsEventNotificationsConsumerPolicy_"+client).document(sqsPolicyDocument).build();
 
-        sqsConsumeRole_m2c.attachInlinePolicy(sqsPolicy_m2c);
-        sqsConsumerGroup_m2c.attachInlinePolicy(sqsPolicy_m2c);
-    
-        // SQS Consumer Mobile3_Client
-        final Role sqsConsumeRole_m3c = Role.Builder.create(this, "RsEventNotificationsConsumerRole_m3c").assumedBy(new AnyPrincipal()).build();
-        final Group sqsConsumerGroup_m3c = Group.Builder.create(this, "RsEventNotificationConsumerGroup_m3c").build();
-
-        final Queue queue_m3c = Queue.Builder.create(this, "RsEventNotifications_m3c")
-            .fifo(true) // or false
-            .visibilityTimeout(Duration.seconds(300))
-            .build();
-
-        topic.addSubscription(new SqsSubscription(queue_m3c));
-
-        PolicyStatement sqsPolicyStatement_m3c = new PolicyStatement();
-        sqsPolicyStatement_m3c.setSid("Consume");
-        sqsPolicyStatement_m3c.setEffect(Effect.ALLOW);
-        sqsPolicyStatement_m3c.addActions("SQS:ReceiveMessage");
-        sqsPolicyStatement_m3c.addActions("SQS:DeleteMessage");
-        sqsPolicyStatement_m3c.addResources(queue_m3c.getQueueArn());
-        PolicyDocument sqsPolicyDocument_m3c = new PolicyDocument();
-        sqsPolicyDocument_m3c.addStatements(sqsPolicyStatement_m3c);
-
-        Policy sqsPolicy_m3c = Policy.Builder.create(this, "RsEventNotificationsConsumerPolicy_m3c").document(sqsPolicyDocument_m3c).build();
-
-        sqsConsumeRole_m3c.attachInlinePolicy(sqsPolicy_m3c);
-        sqsConsumerGroup_m3c.attachInlinePolicy(sqsPolicy_m3c);
+            sqsConsumeRole.attachInlinePolicy(sqsPolicy);
+            sqsConsumerGroup.attachInlinePolicy(sqsPolicy);
+        }
     }
 }
